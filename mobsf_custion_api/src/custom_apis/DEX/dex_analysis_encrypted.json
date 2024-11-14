@@ -1,0 +1,16 @@
+{
+    "status": "success",
+    "hash": "file_hash",
+    "dex_analysis": {
+      "encrypted": true,
+      "encryption_type": "AES-128/ECB",
+      "dex_files": [
+        {
+          "name": "classes.dex",
+          "size": 12345,
+          "is_encrypted": true,
+          "encryption_type": "AES-128/ECB"
+        }
+      ]
+    }
+  }
