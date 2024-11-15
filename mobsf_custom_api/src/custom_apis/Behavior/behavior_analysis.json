@@ -1,0 +1,27 @@
+{
+    "network_behavior": {
+      "suspicious_urls": [],
+      "ssl_pinning": false,
+      "insecure_connections": []
+    },
+    "data_leakage": {
+      "sensitive_data": [],
+      "data_transmission": {},
+      "storage": {}
+    },
+    "dangerous_apis": {
+      "reflection": [],
+      "native": [],
+      "crypto": [],
+      "command": []
+    },
+    "runtime_behavior": {
+      "file_operations": {},
+      "system_calls": {},
+      "permissions_used": {}
+    },
+    "risk_score": {
+      "total_score": 75.5,
+      "risk_level": "HIGH"
+    }
+  }
