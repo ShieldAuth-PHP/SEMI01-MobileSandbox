@@ -1,0 +1,22 @@
+1. pip install fastapi uvicorn reportlab plotly kaleido requests pandas numpy
+
+2. MobSF가 설치된 디렉토리에서(기본 포트: 8000)
+./run.sh    # Linux/Mac
+run.bat     # Windows
+
+3. MobSF_Visualization.py 실행(포트: 8001)
+python MobSF_Visualization.py
+
+4. 두 서버가 모두 실행되고 있는 지 확인
+- MobSF 메인 서버: http://localhost:8000
+- 시각화 서버: http://localhost:8001/health
+
+5. API 키 설정(환경 변수)
+# Linux/Mac
+export MOBSF_API_KEY="your_api_key"
+
+# Windows
+set MOBSF_API_KEY="your_api_key"
+
+6. test_client.py 실행
+python test_client.py
