@@ -1,5 +1,1 @@
-<<<<<<< HEAD
-branch
-=======
 Hello world
->>>>>>> 22ff64b (test)
