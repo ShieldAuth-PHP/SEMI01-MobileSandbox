@@ -1,208 +1,176 @@
 import json
 import os
+import unittest
 from datetime import datetime
-from typing import BinaryIO, Dict, Optional, Union
+from pathlib import Path
+from typing import Dict
 
 import requests
+from mobsf_visualization_client import MobSFVisualizationClient
 
 
-class MobSFVisualizationClient:
-    def __init__(self, base_url: str = "http://localhost:8001", api_key: Optional[str] = None):
-        """
-        MobSF 시각화 API 클라이언트 초기화
+class TestMobSFVisualizationClient(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        """테스트 클래스 초기화"""
+        # 테스트 환경 설정
+        cls.api_key = os.getenv("MOBSF_API_KEY", "test_api_key")
+        cls.base_url = os.getenv("MOBSF_VIZ_URL", "http://localhost:8001")
+        cls.test_dir = Path("test_outputs")
+        cls.test_dir.mkdir(exist_ok=True)
         
-        Args:
-            base_url: API 서버 기본 URL (기본값: "http://localhost:8001")
-            api_key: MobSF API 키 (선택사항)
-        """
-        self.base_url = base_url.rstrip('/')
-        self.headers = {
-            "Content-Type": "application/json"
-        }
-        if api_key:
-            self.headers["Authorization"] = api_key
-
-    def check_health(self) -> Dict:
-        """
-        서버 상태 확인
+        # 테스트용 클라이언트 초기화
+        cls.client = MobSFVisualizationClient(
+            base_url=cls.base_url,
+            api_key=cls.api_key
+        )
         
-        Returns:
-            Dict: 서버 상태 정보
-        """
+        # 테스트용 분석 ID (실제 MobSF에서 분석한 APK의 ID 사용)
+        cls.test_analysis_id = "test_analysis_id"  # 실제 분석 ID로 변경 필요
+
+    def setUp(self):
+        """각 테스트 케이스 전 실행"""
+        # 서버 상태 확인
+        health = self.client.check_health()
+        if health.get("status") != "healthy":
+            self.skipTest("MobSF Visualization server is not healthy")
+
+    def test_server_health(self):
+        """서버 상태 확인 테스트"""
+        response = self.client.check_health()
+        self.assertEqual(response.get("status"), "healthy")
+        self.assertIn("mobsf_client", response)
+
+    def test_permissions_visualization(self):
+        """권한 분석 시각화 테스트"""
         try:
-            response = requests.get(
-                f"{self.base_url}/health",
-                headers=self.headers
+            response = self.client.get_visualization(
+                analysis_id=self.test_analysis_id,
+                report_type="static",
+                visualization_type="permissions"
             )
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Health check failed: {str(e)}")
-            return {"status": "error", "message": str(e)}
-
-    def get_visualization(
-        self, 
-        analysis_id: str, 
-        report_type: str, 
-        visualization_type: str
-    ) -> Dict:
-        """
-        시각화 데이터 요청
-        
-        Args:
-            analysis_id: 분석 ID
-            report_type: 리포트 타입 ('static', 'dynamic', 'combined')
-            visualization_type: 시각화 타입 ('permissions', 'security_score')
             
-        Returns:
-            Dict: 시각화 데이터
-        """
-        try:
-            response = requests.post(
-                f"{self.base_url}/api/v1/visualize",
-                headers=self.headers,
-                json={
-                    "analysis_id": analysis_id,
-                    "report_type": report_type,
-                    "visualization_type": visualization_type
-                }
+            # 응답 검증
+            self.assertIn("chart_data", response)
+            self.assertIsInstance(response["chart_data"], dict)
+            
+            # 결과 저장
+            output_path = self.test_dir / "permissions_viz.json"
+            success = self.client.save_visualization(
+                response,
+                str(output_path)
             )
-            response.raise_for_status()
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            print(f"Visualization request failed: {str(e)}")
-            return {"error": str(e)}
-    
-    def get_pdf_report(
-        self, 
-        analysis_id: str, 
-        report_type: str,
-        save_path: Optional[str] = None
-    ) -> Union[bytes, str]:
-        """
-        PDF 보고서 요청 및 저장
-        
-        Args:
-            analysis_id: 분석 ID
-            report_type: 리포트 타입 ('static', 'dynamic', 'combined')
-            save_path: PDF 저장 경로 (선택사항)
-            
-        Returns:
-            Union[bytes, str]: PDF 데이터 또는 저장된 파일 경로
-        """
-        try:
-            response = requests.post(
-                f"{self.base_url}/api/v1/visualization_pdf",
-                headers=self.headers,
-                json={
-                    "analysis_id": analysis_id,
-                    "report_type": report_type
-                }
-            )
-            response.raise_for_status()
-            
-            # PDF 저장
-            if save_path:
-                pdf_path = save_path
-            else:
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                pdf_path = f"security_analysis_{analysis_id}_{timestamp}.pdf"
-            
-            with open(pdf_path, "wb") as f:
-                f.write(response.content)
-            
-            return pdf_path
+            self.assertTrue(success)
+            self.assertTrue(output_path.exists())
             
         except requests.exceptions.RequestException as e:
-            print(f"PDF report request failed: {str(e)}")
-            return None
+            self.fail(f"Failed to get permissions visualization: {str(e)}")
 
-    def save_visualization(
-        self,
-        visualization_data: Dict,
-        output_path: str,
-        format: str = "json"
-    ) -> bool:
-        """
-        시각화 데이터 저장
-        
-        Args:
-            visualization_data: 시각화 데이터
-            output_path: 저장 경로
-            format: 저장 형식 ('json' 또는 'html')
-            
-        Returns:
-            bool: 저장 성공 여부
-        """
+    def test_security_score_visualization(self):
+        """보안 점수 시각화 테스트"""
         try:
-            if format == "json":
-                with open(output_path, "w", encoding="utf-8") as f:
-                    json.dump(visualization_data, f, indent=2, ensure_ascii=False)
-            elif format == "html":
-                # HTML 형식으로 저장하는 로직 구현 필요
-                pass
-            else:
-                raise ValueError(f"Unsupported format: {format}")
+            response = self.client.get_visualization(
+                analysis_id=self.test_analysis_id,
+                report_type="static",
+                visualization_type="security_score"
+            )
             
-            return True
-        except Exception as e:
-            print(f"Failed to save visualization: {str(e)}")
-            return False
+            # 응답 검증
+            self.assertIn("chart_data", response)
+            self.assertIsInstance(response["chart_data"], dict)
+            
+            # 결과 저장
+            output_path = self.test_dir / "security_score_viz.json"
+            success = self.client.save_visualization(
+                response,
+                str(output_path)
+            )
+            self.assertTrue(success)
+            self.assertTrue(output_path.exists())
+            
+        except requests.exceptions.RequestException as e:
+            self.fail(f"Failed to get security score visualization: {str(e)}")
+
+    def test_pdf_report_generation(self):
+        """PDF 보고서 생성 테스트"""
+        try:
+            output_path = self.test_dir / f"security_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            pdf_path = self.client.get_pdf_report(
+                analysis_id=self.test_analysis_id,
+                report_type="static",
+                save_path=str(output_path)
+            )
+            
+            # PDF 생성 검증
+            self.assertIsNotNone(pdf_path)
+            self.assertTrue(Path(pdf_path).exists())
+            self.assertTrue(Path(pdf_path).stat().st_size > 0)
+            
+        except requests.exceptions.RequestException as e:
+            self.fail(f"Failed to generate PDF report: {str(e)}")
+
+    def test_invalid_visualization_type(self):
+        """잘못된 시각화 타입 테스트"""
+        with self.assertRaises(Exception):
+            self.client.get_visualization(
+                analysis_id=self.test_analysis_id,
+                report_type="static",
+                visualization_type="invalid_type"
+            )
+
+    def test_save_visualization_formats(self):
+        """시각화 저장 포맷 테스트"""
+        test_data = {"test": "data"}
+        
+        # JSON 포맷 테스트
+        json_path = self.test_dir / "test_viz.json"
+        success = self.client.save_visualization(
+            test_data,
+            str(json_path),
+            format="json"
+        )
+        self.assertTrue(success)
+        self.assertTrue(json_path.exists())
+        
+        # 잘못된 포맷 테스트
+        with self.assertRaises(ValueError):
+            self.client.save_visualization(
+                test_data,
+                "test.invalid",
+                format="invalid_format"
+            )
+
+    @classmethod
+    def tearDownClass(cls):
+        """테스트 클래스 종료 시 정리"""
+        # 테스트 출력 파일 정리
+        if cls.test_dir.exists():
+            for file in cls.test_dir.glob("*"):
+                try:
+                    file.unlink()
+                except Exception:
+                    pass
+            cls.test_dir.rmdir()
 
 def main():
-    # API 키 설정 (환경 변수 또는 직접 입력)
-    api_key = os.getenv("MOBSF_API_KEY", "YOUR_API_KEY")
+    # 커맨드라인에서 실행 시 추가 옵션 처리
+    import argparse
+    parser = argparse.ArgumentParser(description='Test MobSF Visualization Client')
+    parser.add_argument('--api-key', help='MobSF API Key')
+    parser.add_argument('--server-url', help='MobSF Visualization Server URL')
+    parser.add_argument('--analysis-id', help='Test Analysis ID')
+    args = parser.parse_args()
     
-    # 클라이언트 생성
-    client = MobSFVisualizationClient(api_key=api_key)
+    # 환경 변수 설정
+    if args.api_key:
+        os.environ['MOBSF_API_KEY'] = args.api_key
+    if args.server_url:
+        os.environ['MOBSF_VIZ_URL'] = args.server_url
+    if args.analysis_id:
+        TestMobSFVisualizationClient.test_analysis_id = args.analysis_id
     
-    try:
-        # 1. 서버 상태 확인
-        print("\n1. Checking server health...")
-        health = client.check_health()
-        print("Server Health:", json.dumps(health, indent=2))
-        
-        # 2. 권한 분석 시각화 테스트
-        print("\n2. Testing permissions visualization...")
-        viz_response = client.get_visualization(
-            analysis_id="test_id",
-            report_type="static",
-            visualization_type="permissions"
-        )
-        print("Permissions Visualization Response:", json.dumps(viz_response, indent=2))
-        
-        # 시각화 데이터 저장
-        client.save_visualization(
-            viz_response,
-            "permissions_visualization.json"
-        )
-        
-        # 3. 보안 점수 시각화 테스트
-        print("\n3. Testing security score visualization...")
-        security_viz = client.get_visualization(
-            analysis_id="test_id",
-            report_type="static",
-            visualization_type="security_score"
-        )
-        print("Security Score Visualization Response:", json.dumps(security_viz, indent=2))
-        
-        # 4. PDF 보고서 생성 테스트
-        print("\n4. Testing PDF report generation...")
-        pdf_path = client.get_pdf_report(
-            analysis_id="test_id",
-            report_type="static",
-            save_path="security_report.pdf"
-        )
-        
-        if pdf_path:
-            print(f"PDF report saved as: {pdf_path}")
-        else:
-            print("Failed to generate PDF report")
-        
-    except requests.exceptions.ConnectionError:
-        print("Error: Cannot connect to the server. Make sure it's running.")
-    except Exception as e:
-        print(f"Error: {str(e)}")
+    # 테스트 실행
+    unittest.main(argv=[''])
 
 if __name__ == "__main__":
     main()
