@@ -34,25 +34,34 @@ class MobSFVisualizationClient:
             raise Exception(f"Failed to check visualization server health: {str(e)}")
 
     def get_report(self, analysis_id: str, report_type: str = "static") -> Dict:
-        """MobSF 서버에서 리포트 가져오기 (8000 포트)"""
         try:
-            endpoint = "/api/v1/report_json" if report_type == "static" else "/api/v1/dynamic/report_json"
+            if report_type == "static":
+                endpoint = "/api/v1/report_json"
+                data = {
+                    "hash": analysis_id,
+                    "scan_type": "apk"
+                }
+            else:
+                endpoint = "/api/v1/dynamic/report_json"
+                data = {
+                    "hash": analysis_id,
+                    "type": "apk",
+                    "report_type": "json"
+                }
+
             url = f"{self.mobsf_url}{endpoint}"
-            
             print(f"Requesting MobSF report from: {url}")
+            print(f"Request data: {data}")  # 디버깅용
             
             response = requests.post(
                 url,
                 headers=self.headers,
-                json={
-                    "hash": analysis_id,
-                    "scan_type": "apk"
-                }
+                json=data
             )
             
-            if response.status_code == 422:
-                print(f"Response content: {response.text}") # 디버깅용
-                
+            if response.status_code != 200:
+                print(f"Response content: {response.text}")
+            
             response.raise_for_status()
             return response.json()
         except Exception as e:
