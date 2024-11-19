@@ -1,22 +1,50 @@
-1. pip install fastapi uvicorn reportlab plotly kaleido requests pandas numpy
+### 1.1 필수 라이브러리 설치
+```bash
+pip install fastapi uvicorn plotly pandas reportlab requests numpy
+```
 
-2. MobSF가 설치된 디렉토리에서(기본 포트: 8000)
-./run.sh    # Linux/Mac
-run.bat     # Windows
+### 2.1 MobSF_Visualization.py 설정
+```python
+# MobSF_Visualization.py 파일 내부 설정 변경
+MOBSF_API_KEY = "your_mobsf_api_key"  # MobSF API 키 입력
+MOBSF_BASE_URL = "http://localhost:8000"  # MobSF 서버 주소
+```
 
-3. MobSF_Visualization.py 실행(포트: 8001)
-python MobSF_Visualization.py
-
-4. 두 서버가 모두 실행되고 있는 지 확인
-- MobSF 메인 서버: http://localhost:8000
-- 시각화 서버: http://localhost:8001/health
-
-5. API 키 설정(환경 변수)
+### 2.2 환경 변수 설정 (테스트용)
+```bash
 # Linux/Mac
 export MOBSF_API_KEY="your_api_key"
+export MOBSF_VIZ_URL="http://localhost:8001"
 
 # Windows
-set MOBSF_API_KEY="your_api_key"
+set MOBSF_API_KEY=your_api_key
+set MOBSF_VIZ_URL=http://localhost:8001
+```
 
-6. test_client.py 실행
+## 3. 실행 순서
+
+### 3.1 MobSF 서버 실행
+
+### 3.2 시각화 서버 실행
+```bash
+python MobSF_Visualization.py
+```
+
+### 3.3 테스트 실행
+```bash
 python test_client.py
+```
+
+## 4. API 엔드포인트
+
+### 4.1 서버 상태 확인
+- URL: http://localhost:8001/health
+- Method: GET
+
+### 4.2 시각화 생성
+- URL: http://localhost:8001/api/v1/visualize
+- Method: POST
+
+### 4.3 PDF 보고서 생성
+- URL: http://localhost:8001/api/v1/visualization_pdf
+- Method: POST
