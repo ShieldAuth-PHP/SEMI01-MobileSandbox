@@ -39,32 +39,43 @@ class MobSFVisualizationClient:
                 endpoint = "/api/v1/report_json"
                 data = {
                     "hash": analysis_id,
-                    "scan_type": "apk"
+                    "scan_type": "apk",
+                    "type": "apk",
+                    "api": "true"
                 }
+            # 동적 분석 리포트
             else:
                 endpoint = "/api/v1/dynamic/report_json"
                 data = {
                     "hash": analysis_id,
                     "type": "apk",
-                    "report_type": "json"
+                    "report_type": "json",
+                    "api": "true"
                 }
 
             url = f"{self.mobsf_url}{endpoint}"
             print(f"Requesting MobSF report from: {url}")
             print(f"Request data: {data}")  # 디버깅용
             
+            # API 키를 헤더에 추가
+            headers = {
+                "Authorization": self.api_key,
+                "Content-Type": "application/json"
+            }
+            
             response = requests.post(
                 url,
-                headers=self.headers,
+                headers=headers,
                 json=data
             )
             
-            if response.status_code != 200:
-                print(f"Response content: {response.text}")
+            print(f"Response status: {response.status_code}")
+            print(f"Response content: {response.text}")
             
             response.raise_for_status()
             return response.json()
         except Exception as e:
+            print(f"Error details: {str(e)}")
             raise Exception(f"Failed to get MobSF report: {str(e)}")
 
     def get_visualization(self, analysis_id: str, report_type: str, visualization_type: str, report_data: Dict = None) -> Dict:
