@@ -44,21 +44,21 @@ class TestMobSFVisualizationClient(unittest.TestCase):
 
     def test_permissions_visualization(self):
         """권한 분석 시각화 테스트"""
-    try:
-        # 시각화 요청 - static 분석용
-        response = self.client.get_visualization(
-            analysis_id=self.test_analysis_id,
-            report_type="static",  # 명확하게 static으로 지정
-            visualization_type="permissions"
-        )
-        
-        print(f"Visualization response: {response}")  # 디버깅용
-        
-        self.assertIn("chart_data", response)
-        self.assertIsInstance(response["chart_data"], dict)
-        
-    except Exception as e:
-        self.fail(f"Test failed with error: {str(e)}")
+        try:
+            # 시각화 요청 - static 분석용
+            response = self.client.get_visualization(
+                analysis_id=self.test_analysis_id,
+                report_type="static",  # 명확하게 static으로 지정
+                visualization_type="permissions"
+            )
+            
+            print(f"Visualization response: {response}")  # 디버깅용
+            
+            self.assertIn("chart_data", response)
+            self.assertIsInstance(response["chart_data"], dict)
+            
+        except Exception as e:
+            self.fail(f"Test failed with error: {str(e)}")
 
     def test_dynamic_analysis_visualization(self):
         """동적 분석 시각화 테스트"""
