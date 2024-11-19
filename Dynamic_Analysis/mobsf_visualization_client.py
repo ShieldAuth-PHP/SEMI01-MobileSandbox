@@ -39,16 +39,20 @@ class MobSFVisualizationClient:
             endpoint = "/api/v1/report_json" if report_type == "static" else "/api/v1/dynamic/report_json"
             url = f"{self.mobsf_url}{endpoint}"
             
-            print(f"Requesting MobSF report from: {url}")  # 디버깅용
+            print(f"Requesting MobSF report from: {url}")
             
             response = requests.post(
                 url,
                 headers=self.headers,
                 json={
                     "hash": analysis_id,
-                    "type": report_type
+                    "scan_type": "apk"
                 }
             )
+            
+            if response.status_code == 422:
+                print(f"Response content: {response.text}") # 디버깅용
+                
             response.raise_for_status()
             return response.json()
         except Exception as e:
