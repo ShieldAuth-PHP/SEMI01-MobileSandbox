@@ -8,77 +8,72 @@ from requests.exceptions import RequestException
 
 
 class MobSFVisualizationClient:
-    """MobSF 시각화 서비스와 상호작용하기 위한 클라이언트 클래스"""
-
-    def __init__(self, base_url: str, api_key: str):
+    def __init__(self, viz_url: str, api_key: str, mobsf_url: str = "http://localhost:8000"):
         """
-        MobSFVisualizationClient 초기화
-        
+        초기화
         Args:
-            base_url (str): 시각화 서비스의 기본 URL
-            api_key (str): API 인증 키
+            base_url: 시각화 서버 URL (8001 포트)
+            api_key: MobSF API 키
+            mobsf_url: MobSF 서버 URL (8000 포트)
         """
-        self.base_url = base_url.rstrip('/')
+        self.base_url = viz_url.rstrip('/')
+        self.mobsf_url = mobsf_url.rstrip('/')
         self.api_key = api_key
         self.headers = {
-            'Authorization': api_key,
-            'Content-Type': 'application/json'
+            "Authorization": api_key,
+            "Content-Type": "application/json"
         }
 
     def check_health(self) -> Dict:
-        """
-        서버 상태 확인
-        
-        Returns:
-            Dict: 서버 상태 정보를 담은 딕셔너리
-        
-        Raises:
-            RequestException: API 요청 실패 시
-        """
+        """시각화 서버 상태 확인 (8001 포트)"""
         try:
             response = requests.get(f"{self.base_url}/health")
             response.raise_for_status()
             return response.json()
-        except RequestException as e:
-            raise Exception(f"Failed to check server health: {str(e)}")
+        except Exception as e:
+            raise Exception(f"Failed to check visualization server health: {str(e)}")
 
-    def get_visualization(
-        self,
-        analysis_id: str,
-        report_type: str,
-        visualization_type: str
-    ) -> Dict:
-        """
-        시각화 데이터 요청
-        
-        Args:
-            analysis_id (str): MobSF 분석 ID
-            report_type (str): 리포트 타입 ('static', 'dynamic', 'combined')
-            visualization_type (str): 시각화 타입 ('permissions', 'security_score')
-            
-        Returns:
-            Dict: 시각화 데이터를 담은 딕셔너리
-            
-        Raises:
-            RequestException: API 요청 실패 시
-            ValueError: 잘못된 시각화 타입 지정 시
-        """
-        if visualization_type not in ['permissions', 'security_score']:
-            raise ValueError(f"Unsupported visualization type: {visualization_type}")
-
+    def get_report(self, analysis_id: str, report_type: str = "static") -> Dict:
+        """MobSF 서버에서 리포트 가져오기 (8000 포트)"""
         try:
+            endpoint = "/api/v1/report_json" if report_type == "static" else "/api/v1/dynamic/report_json"
+            url = f"{self.mobsf_url}{endpoint}"
+            
+            print(f"Requesting MobSF report from: {url}")  # 디버깅용
+            
+            response = requests.post(
+                url,
+                headers=self.headers,
+                json={
+                    "hash": analysis_id,
+                    "type": report_type
+                }
+            )
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            raise Exception(f"Failed to get MobSF report: {str(e)}")
+
+    def get_visualization(self, analysis_id: str, report_type: str, visualization_type: str, report_data: Dict = None) -> Dict:
+        """시각화 서버에 시각화 요청 (8001 포트)"""
+        try:
+            if report_data is None:
+                report_data = self.get_report(analysis_id, report_type)
+            
+            # 시각화 서버에 시각화 요청
             response = requests.post(
                 f"{self.base_url}/api/v1/visualize",
                 headers=self.headers,
                 json={
                     "analysis_id": analysis_id,
                     "report_type": report_type,
-                    "visualization_type": visualization_type
+                    "visualization_type": visualization_type,
+                    "report_data": report_data  # 리포트 데이터 포함
                 }
             )
             response.raise_for_status()
             return response.json()
-        except RequestException as e:
+        except Exception as e:
             raise Exception(f"Failed to get visualization: {str(e)}")
 
     def get_pdf_report(
@@ -161,3 +156,16 @@ class MobSFVisualizationClient:
             return True
         except Exception as e:
             raise Exception(f"Failed to save visualization: {str(e)}")
+        
+    def check_visualization_health(self) -> Dict:
+        return self.check_health()
+
+    def check_mobsf_health(self) -> bool:
+        try:
+            response = requests.get(f"{self.mobsf_url}/api/v1/health")
+            return response.status_code == 200
+        except:
+            return False
+
+    def get_mobsf_report(self, analysis_id: str, report_type: str) -> Dict:
+        return self.get_report(analysis_id, report_type)
