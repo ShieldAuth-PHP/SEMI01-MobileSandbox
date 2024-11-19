@@ -82,16 +82,11 @@ class TestMobSFVisualizationClient(unittest.TestCase):
         """각 테스트 케이스 전 실행"""
         # 시각화 서버 상태 확인
         try:
-            health = self.client.check_visualization_health()
+            health = self.client.check_health()
             if health.get("status") != "healthy":
                 self.skipTest("Visualization server is not healthy")
-                
-            # MobSF 서버 상태 확인
-            mobsf_health = self.client.check_mobsf_health()
-            if not mobsf_health:
-                self.skipTest("MobSF server is not responding")
-                
         except Exception as e:
+            print(f"Error during health check: {str(e)}") # 디버깅용 출력
             self.skipTest(f"Server health check failed: {str(e)}")
 
     def test_server_health(self):
