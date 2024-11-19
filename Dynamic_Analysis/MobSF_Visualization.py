@@ -25,6 +25,33 @@ from reportlab.platypus import (Image, Paragraph, SimpleDocTemplate, Spacer,
 MOBSF_API_KEY = ""  # MobSF의 API 키를 여기에 입력
 MOBSF_BASE_URL = "http://localhost:8000"  # MobSF 서버 URL
 
+class SecurityMetrics:
+    def __init__(self, report_data: dict):
+        self.data = report_data
+        
+    def get_permission_analysis(self) -> dict:
+        """권한 분석 데이터 추출"""
+        permissions = self.data.get('permissions', {})
+        return {
+            'status': 'critical',
+            'dangerous': len(permissions.get('dangerous_permissions', [])),
+            'normal': len(permissions.get('normal_permissions', [])),
+            'details': permissions
+        }
+        
+    def get_security_score(self) -> dict:
+        """보안 점수 계산"""
+        security_score = self.data.get('security_score', {})
+        return {
+            'overall_score': security_score.get('score', 0),
+            'categories': {
+                'permissions': security_score.get('permissions_score', 0),
+                'code_security': security_score.get('code_security_score', 0),
+                'network_security': security_score.get('network_security_score', 0),
+                'privacy': security_score.get('privacy_score', 0)
+            }
+        }
+
 class MobSFClient:
     def __init__(self, api_key: str, base_url: str):
         self.api_key = api_key
@@ -211,33 +238,6 @@ class VisualizationRequest(BaseModel):
     analysis_id: str
     report_type: str  # 'static', 'dynamic', 'combined'
     visualization_type: str  # 'permissions', 'security_score', 'api_calls', 'network', 'components'
-
-class SecurityMetrics:
-    def __init__(self, report_data: dict):
-        self.data = report_data
-        
-    def get_permission_analysis(self) -> dict:
-        """권한 분석 데이터 추출"""
-        permissions = self.data.get('permissions', {})
-        return {
-            'status': 'critical',
-            'dangerous': len(permissions.get('dangerous_permissions', [])),
-            'normal': len(permissions.get('normal_permissions', [])),
-            'details': permissions
-        }
-        
-    def get_security_score(self) -> dict:
-        """보안 점수 계산"""
-        security_score = self.data.get('security_score', {})
-        return {
-            'overall_score': security_score.get('score', 0),
-            'categories': {
-                'permissions': security_score.get('permissions_score', 0),
-                'code_security': security_score.get('code_security_score', 0),
-                'network_security': security_score.get('network_security_score', 0),
-                'privacy': security_score.get('privacy_score', 0)
-            }
-        }
 
 class VisualizationGenerator:
     @staticmethod
