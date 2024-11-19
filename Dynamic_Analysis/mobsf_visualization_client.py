@@ -35,6 +35,7 @@ class MobSFVisualizationClient:
 
     def get_report(self, analysis_id: str, report_type: str = "static") -> Dict:
         try:
+            # 정적 분석 리포트
             if report_type == "static":
                 endpoint = "/api/v1/report_json"
                 data = {
