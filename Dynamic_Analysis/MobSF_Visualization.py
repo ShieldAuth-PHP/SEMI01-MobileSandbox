@@ -58,22 +58,46 @@ class MobSFClient:
         self.base_url = base_url.rstrip('/')
         self.headers = {
             "Authorization": api_key,
+            "Content-Type": "application/json"
         }
     
     async def get_report(self, analysis_id: str, report_type: str) -> dict:
         """MobSF에서 분석 리포트 가져오기"""
-        endpoint = f"/api/v1/{report_type}/report_json"
-        url = f"{self.base_url}{endpoint}"
-        
         try:
+            if report_type == "static":
+                # Static 분석 리포트용 엔드포인트
+                url = f"{self.base_url}/api/v1/report_json"
+            elif report_type == "dynamic":
+                # Dynamic 분석 리포트용 엔드포인트
+                url = f"{self.base_url}/api/v1/dynamic/report_json"
+            else:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unsupported report type: {report_type}"
+                )
+
+            print(f"Requesting report from: {url}")  # 디버깅용
+            print(f"Analysis ID: {analysis_id}")
+            print(f"Report Type: {report_type}")
+            
             response = requests.post(
                 url,
                 headers=self.headers,
                 json={"hash": analysis_id}
             )
+            
+            if response.status_code == 404:
+                print(f"Response 404 - URL: {url}, Analysis ID: {analysis_id}")  # 디버깅용
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Report not found for analysis ID: {analysis_id}"
+                )
+                
             response.raise_for_status()
             return response.json()
+            
         except requests.exceptions.RequestException as e:
+            print(f"Request failed: {str(e)}")  # 디버깅용
             raise HTTPException(
                 status_code=500,
                 detail=f"Failed to fetch report from MobSF: {str(e)}"
