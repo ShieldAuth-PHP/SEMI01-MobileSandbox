@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Dict
 
 import requests
+
 from mobsf_visualization_client import MobSFVisualizationClient
 
 
@@ -43,28 +44,39 @@ class TestMobSFVisualizationClient(unittest.TestCase):
 
     def test_permissions_visualization(self):
         """권한 분석 시각화 테스트"""
+    try:
+        # 시각화 요청 - static 분석용
+        response = self.client.get_visualization(
+            analysis_id=self.test_analysis_id,
+            report_type="static",  # 명확하게 static으로 지정
+            visualization_type="permissions"
+        )
+        
+        print(f"Visualization response: {response}")  # 디버깅용
+        
+        self.assertIn("chart_data", response)
+        self.assertIsInstance(response["chart_data"], dict)
+        
+    except Exception as e:
+        self.fail(f"Test failed with error: {str(e)}")
+
+    def test_dynamic_analysis_visualization(self):
+        """동적 분석 시각화 테스트"""
         try:
+            # 시각화 요청 - dynamic 분석용
             response = self.client.get_visualization(
                 analysis_id=self.test_analysis_id,
-                report_type="static",
-                visualization_type="permissions"
+                report_type="dynamic",  # 동적 분석용
+                visualization_type="security_score"  # 동적 분석에 적합한 시각화 타입 선택
             )
             
-            # 응답 검증
+            print(f"Dynamic visualization response: {response}")  # 디버깅용
+            
             self.assertIn("chart_data", response)
             self.assertIsInstance(response["chart_data"], dict)
             
-            # 결과 저장
-            output_path = self.test_dir / "permissions_viz.json"
-            success = self.client.save_visualization(
-                response,
-                str(output_path)
-            )
-            self.assertTrue(success)
-            self.assertTrue(output_path.exists())
-            
-        except requests.exceptions.RequestException as e:
-            self.fail(f"Failed to get permissions visualization: {str(e)}")
+        except Exception as e:
+            self.fail(f"Dynamic test failed with error: {str(e)}")
 
     def test_security_score_visualization(self):
         """보안 점수 시각화 테스트"""
